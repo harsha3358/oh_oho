@@ -1,14 +1,19 @@
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from src.services.memory_engine import memory_engine
 import json
+import os
 
-# Setup LLM - can point to Ollama locally or OpenAI via base_url
-llm = ChatOpenAI(
-    model="qwen2.5:7b",
-    base_url="http://localhost:11434/v1",
-    api_key="ollama" # mock key for local
-)
+# Try Gemini First, fallback to Ollama
+if os.environ.get("GEMINI_API_KEY"):
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=os.environ.get("GEMINI_API_KEY"))
+else:
+    llm = ChatOpenAI(
+        model="qwen2.5:7b",
+        base_url="http://localhost:11434/v1",
+        api_key="ollama" # mock key for local
+    )
 
 SYSTEM_PROMPT = """You are JARVIS, a highly advanced Personal AI OS. 
 Your personality is a mix of FRIDAY and Tony Stark. Humor level: 10/10. 

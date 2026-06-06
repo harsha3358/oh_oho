@@ -1,7 +1,47 @@
-# JARVIS - oh_oho Personal OS
+# Project oh_oho (JARVIS Personal AI OS)
 
-This is the production repository for Project oh_oho (JARVIS AI). 
-It contains an Electron + React desktop frontend and a FastAPI Python backend.
+A production-grade, local-first AI Personal OS.
+
+## 🚀 Sprint 1 Features (RC-1)
+* **Hybrid AI**: Local Ollama (Qwen) with Google Gemini Fallback.
+* **Memory Engine**: SQLite + ChromaDB semantic memory injection.
+* **Voice System**: Hands-free Wake Word detection.
+* **Founder Mode**: Isolated context tracking for high-tier startup execution.
+* **Desktop Context**: Secure Electron wrapper with glassmorphic React UI.
+
+## 🛠️ Tech Stack
+* **Frontend**: Electron, React, Vite, Tailwind CSS V4, Zustand
+* **Backend**: FastAPI, WebSockets, SQLAlchemy, LangChain
+* **AI Models**: Qwen 2.5 (Ollama), Gemini 1.5 Flash
+* **Vector DB**: ChromaDB
+
+## 📦 Installation & Running
+
+1. **Install Frontend Dependencies:**
+   ```bash
+   cd apps/desktop
+   npm install
+   ```
+
+2. **Install Backend Dependencies:**
+   ```bash
+   cd backend
+   python -m venv venv
+   .\venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+3. **Start Development Servers (Two Terminals):**
+   ```bash
+   # Terminal 1 (Backend)
+   cd backend
+   .\venv\Scripts\activate
+   uvicorn src.main:app --host 127.0.0.1 --port 8765
+
+   # Terminal 2 (Frontend)
+   cd apps/desktop
+   npm start
+   ```
 
 ## 1. Project Tree
 ```
