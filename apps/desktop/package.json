@@ -6,7 +6,7 @@
   "description": "JARVIS Personal Operating System",
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev:frontend": "vite",
+    "dev:frontend": "vite --force",
     "dev:electron": "tsc -p tsconfig.node.json && electron .",
     "dev": "concurrently -k \"npm run dev:frontend\" \"wait-on http://localhost:5173 && npm run dev:electron\"",
     "build:frontend": "tsc -b && vite build",
