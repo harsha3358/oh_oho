@@ -7,16 +7,22 @@ export default function WelcomeWizard({ onComplete }: { onComplete: () => void }
   const [provider, setProvider] = useState('hybrid');
   const [apiKey, setApiKey] = useState('');
   const [saving, setSaving] = useState(false);
+  const [optInTelemetry, setOptInTelemetry] = useState(false);
 
   const handleSaveAndContinue = async () => {
     if (step === 3) {
       setSaving(true);
-      // In production, this IPC call securely stores the key via safeStorage
       if (window.electronAPI) {
         await window.electronAPI.saveSecret('GEMINI_API_KEY', apiKey);
-      } else {
-        console.warn("Electron API not available, simulating save.");
       }
+      
+      // Handle telemetry preference
+      if (optInTelemetry) {
+        import('posthog-js').then((posthog) => posthog.default.opt_in_capturing());
+      } else {
+        import('posthog-js').then((posthog) => posthog.default.opt_out_capturing());
+      }
+
       setTimeout(() => {
         setSaving(false);
         setStep(4);
@@ -108,11 +114,16 @@ export default function WelcomeWizard({ onComplete }: { onComplete: () => void }
                   </div>
                   <p className="text-xs text-lavender mt-3 flex items-center gap-1"><Lock size={12}/> Never exposed to the UI renderer process.</p>
                   
-                  {!apiKey && (
-                    <div className="mt-6 p-4 border border-yellow-500/30 bg-yellow-500/10 rounded-xl">
-                      <p className="text-sm text-yellow-200">If you continue without an API key, JARVIS will launch in <strong>Limited Mode</strong>.</p>
-                    </div>
-                  )}
+                  {/* Telemetry Opt-in */}
+                  <div className="mt-6 pt-6 border-t border-white/5">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input type="checkbox" checked={optInTelemetry} onChange={(e) => setOptInTelemetry(e.target.checked)} className="mt-1 w-4 h-4 rounded border-white/20 bg-black/40 text-lightBlue focus:ring-lightBlue/50" />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-white/90">Share Anonymous Usage Data</span>
+                        <span className="text-xs text-white/50 mt-1">Help us improve JARVIS Beta by sharing anonymous crash reports and feature usage. We never collect personal data, memories, or API keys.</span>
+                      </div>
+                    </label>
+                  </div>
                 </div>
               </motion.div>
             )}

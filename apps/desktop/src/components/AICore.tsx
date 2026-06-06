@@ -14,7 +14,7 @@ export default function AICore({ state = 'sleeping' }: { state?: CoreState }) {
     alerting: 'rgba(239, 68, 68, 0.8)', // Red alert
   };
 
-  const getAnimationProps = () => {
+  const getAnimationProps = (): any => {
     switch (state) {
       case 'sleeping':
         return { scale: [0.95, 1.05, 0.95], transition: { repeat: Infinity, duration: 4, ease: "easeInOut" } };

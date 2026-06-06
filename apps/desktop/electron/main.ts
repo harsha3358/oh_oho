@@ -19,7 +19,7 @@ function readSecrets() {
   }
 }
 
-function writeSecrets(secrets: any) {
+function writeSecrets(secrets: Record<string, string>) {
   fs.writeFileSync(SECRETS_FILE, JSON.stringify(secrets));
 }
 

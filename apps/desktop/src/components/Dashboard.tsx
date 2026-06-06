@@ -1,5 +1,6 @@
-import { Calendar, Target, Activity, Zap, TrendingUp, AlertCircle, Info } from 'lucide-react';
+import { Calendar, Target, Activity, Zap, TrendingUp, Info } from 'lucide-react';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function Dashboard({ data }: { data: any }) {
   return (
     <div className="h-full w-full flex flex-col gap-6 p-6 overflow-y-auto overflow-x-hidden">

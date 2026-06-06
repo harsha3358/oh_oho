@@ -5,7 +5,7 @@ from src.services.memory_engine import memory_engine
 import os
 
 if os.environ.get("GEMINI_API_KEY"):
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=os.environ.get("GEMINI_API_KEY"))
+    llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=os.environ.get("GEMINI_API_KEY"))
 else:
     llm = ChatOpenAI(model="qwen2.5:7b", base_url="http://localhost:11434/v1", api_key="ollama")
 

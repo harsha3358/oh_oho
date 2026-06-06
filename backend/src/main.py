@@ -1,8 +1,16 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import json
+import os
+import sentry_sdk
 from src.database import engine, Base
 from src.api import sessions, memories, settings
+
+sentry_sdk.init(
+    dsn=os.environ.get("SENTRY_DSN", ""),
+    traces_sample_rate=1.0,
+    profiles_sample_rate=1.0,
+)
 
 # Create all database tables
 Base.metadata.create_all(bind=engine)

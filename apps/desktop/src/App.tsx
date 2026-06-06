@@ -1,10 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, MessageSquare, BrainCircuit, History, Target, Settings, Database, Briefcase } from 'lucide-react';
 import AICore from './components/AICore';
 import Dashboard from './components/Dashboard';
 import MemoryInspector from './components/MemoryInspector';
 import LifeTimeline from './components/LifeTimeline';
 import WelcomeWizard from './components/WelcomeWizard';
+import FeedbackModal from './components/FeedbackModal';
+import * as Sentry from "@sentry/react";
+import posthog from 'posthog-js';
+
+// Initialize Telemetry
+Sentry.init({
+  dsn: import.meta.env.VITE_SENTRY_DSN || "",
+  integrations: [Sentry.browserTracingIntegration(), Sentry.replayIntegration()],
+  tracesSampleRate: 1.0, 
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1.0,
+  enabled: !!import.meta.env.VITE_SENTRY_DSN
+});
+
+posthog.init(import.meta.env.VITE_POSTHOG_KEY || "", {
+  api_host: 'https://app.posthog.com',
+  autocapture: false, // Opt-in based
+  opt_out_capturing_by_default: true, // Only track if explicitly opted-in
+});
 
 type CoreState = 'sleeping' | 'listening' | 'thinking' | 'researching' | 'planning' | 'speaking' | 'alerting';
 type ViewState = 'dashboard' | 'timeline' | 'memory' | 'founder' | 'reflection';
@@ -20,6 +39,7 @@ declare global {
 
 function App() {
   const [isFirstRun, setIsFirstRun] = useState(true);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [coreState, setCoreState] = useState<CoreState>('sleeping');
   const [isListening, setIsListening] = useState(false);
   const [inputText, setInputText] = useState('');
@@ -32,24 +52,59 @@ function App() {
     insights: []
   });
 
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
-    const ws = new WebSocket(`ws://localhost:8000/ws/default-session`);
+    let ws: WebSocket;
+    let reconnectDelay = 1000;
     
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.type === 'state_change') {
-        setCoreState(message.state);
-      }
-      if (message.type === 'dashboard_update') {
-        setDashboardData(message.data);
-      }
-      if (message.type === 'token') {
-        setCoreState('speaking');
-        setTimeout(() => setCoreState('sleeping'), 3000);
-      }
+    const connect = () => {
+      setConnectionStatus('connecting');
+      ws = new WebSocket(`ws://localhost:8000/ws/default-session`);
+      
+      ws.onopen = () => {
+        setConnectionStatus('connected');
+        reconnectDelay = 1000; // Reset delay on success
+      };
+
+      ws.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        if (message.type === 'state_change') {
+          setCoreState(message.state);
+        }
+        if (message.type === 'dashboard_update') {
+          setDashboardData(message.data);
+        }
+        if (message.type === 'token') {
+          setCoreState('speaking');
+          setTimeout(() => setCoreState('sleeping'), 3000);
+        }
+      };
+
+      ws.onclose = () => {
+        setConnectionStatus('disconnected');
+        // Exponential backoff reconnect
+        reconnectTimeoutRef.current = setTimeout(() => {
+          reconnectDelay = Math.min(reconnectDelay * 2, 30000); // Max 30s
+          connect();
+        }, reconnectDelay);
+      };
+      
+      ws.onerror = () => {
+        ws.close();
+      };
     };
 
-    return () => ws.close();
+    connect();
+
+    return () => {
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      if (ws) {
+        ws.onclose = null; // Prevent reconnect loop on unmount
+        ws.close();
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -104,8 +159,16 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen bg-dark overflow-hidden text-primary selection:bg-lightBlue/30">
+    <div className="flex h-screen w-screen bg-dark overflow-hidden text-primary selection:bg-lightBlue/30 relative">
       
+      {/* CONNECTION STATUS INDICATOR */}
+      {connectionStatus !== 'connected' && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-red-500/20 border border-red-500/50 text-red-100 px-4 py-2 rounded-full text-xs font-medium tracking-wider flex items-center gap-2 backdrop-blur-md">
+          <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+          {connectionStatus === 'connecting' ? 'Reconnecting to Core...' : 'Core Disconnected'}
+        </div>
+      )}
+
       {/* LEFT SIDEBAR - Memory & Tools */}
       <aside className="w-72 h-full border-r border-white/5 bg-black/20 backdrop-blur-md p-4 flex flex-col gap-6 flex-shrink-0 z-20">
         <div className="flex items-center gap-3 px-2 py-4 border-b border-white/10">
@@ -122,6 +185,7 @@ function App() {
         </nav>
 
         <div className="mt-auto flex flex-col gap-2">
+          <NavItem icon={<MessageSquare size={18} />} label="Submit Feedback" onClick={() => setShowFeedback(true)} />
           <NavItem icon={<Settings size={18} />} label="Trust & Privacy" onClick={() => {}} />
         </div>
       </aside>
@@ -165,6 +229,8 @@ function App() {
         {renderActiveView()}
       </aside>
 
+      {/* MODALS */}
+      {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
     </div>
   );
 }
