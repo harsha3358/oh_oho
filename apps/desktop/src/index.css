@@ -1,14 +1,21 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme {
-  --color-jarvis-bg: #0f1115;
-  --color-jarvis-panel: #1a1d24;
-  --color-jarvis-accent: #3b82f6;
-  --color-jarvis-text: #e2e8f0;
+@layer base {
+  body {
+    @apply bg-dark text-primary m-0 p-0 font-sans overflow-hidden antialiased;
+  }
 }
 
-body {
-  background-color: var(--color-jarvis-bg);
-  color: var(--color-jarvis-text);
-  font-family: 'Inter', system-ui, sans-serif;
+@layer utilities {
+  .glass-panel {
+    @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl shadow-xl;
+  }
+  .glass-panel-dark {
+    @apply bg-black/40 backdrop-blur-xl border border-white/5 rounded-2xl shadow-2xl;
+  }
+  .text-glow {
+    text-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
+  }
 }

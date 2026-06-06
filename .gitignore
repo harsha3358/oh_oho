@@ -2,6 +2,8 @@
 node_modules/
 dist/
 dist-react/
+dist-electron/
+release/
 .npm/
 
 # Python
@@ -10,6 +12,9 @@ __pycache__/
 *.pyc
 .env
 *.db
+*.sqlite3
+chroma_data/
+backups/
 
 # OS
 .DS_Store

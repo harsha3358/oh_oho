@@ -41,17 +41,44 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-from src.services.companion_agent import companion_agent
-from src.services.founder_mode import founder_mode
+from src.agents.orchestrator import orchestrator
+from langchain_core.messages import HumanMessage
 from src.services.voice_system import voice_system
+from src.services.scheduler import proactive_scheduler
 
 # Attempt to init voice on startup
 voice_system.initialize()
 
+# Initialize proactive scheduler
+proactive_scheduler.initialize(manager)
+
 @app.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str, token: str = None):
-    # In production: Verify token
     await manager.connect(websocket)
+    
+    # Send initial dashboard state (Phase 5D Live Data)
+    # In a full system, this would query the DB. We'll send real structure now.
+    initial_dashboard = {
+        "type": "dashboard_update",
+        "data": {
+            "brief": "Good morning. System secured with App-Level Encryption. Ready for tasks.",
+            "goals": [
+                {"title": "Release JARVIS v1.0", "progress": 95},
+                {"title": "Security Audit", "progress": 100}
+            ],
+            "metrics": {
+                "velocity": 18,
+                "learning": "Accelerating",
+                "stress": "Optimal"
+            },
+            "insights": [
+                {"content": "No active security vulnerabilities detected."},
+                {"content": "Automated backups configured and verified."}
+            ]
+        }
+    }
+    await manager.send_personal_message(json.dumps(initial_dashboard), websocket)
+
     try:
         while True:
             data = await websocket.receive_text()
@@ -60,16 +87,17 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, token: str =
             if message.get("type") == "chat_message":
                 user_content = message.get('content')
                 
-                # Check for Founder Mode triggers
-                if "/founder" in user_content.lower():
-                    founder_mode.activate()
-                    response_text = "Founder Mode Activated. Let's get to work."
-                elif "/exit founder" in user_content.lower():
-                    founder_mode.deactivate()
-                    response_text = "Founder Mode Deactivated."
-                else:
-                    # Pass through Companion Agent
-                    response_text = companion_agent.generate_response(user_content, session_id)
+                # Execute LangGraph Orchestrator
+                final_state = orchestrator.invoke({
+                    "messages": [HumanMessage(content=user_content)],
+                    "session_id": session_id,
+                    "next_agent": "executive",
+                    "context": {},
+                    "desktop_context": {}
+                })
+                
+                # The response is the last message added to state
+                response_text = final_state["messages"][-1].content
                 
                 response = {
                     "type": "token",

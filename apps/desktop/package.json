@@ -1,20 +1,29 @@
 {
-  "name": "desktop",
+  "name": "jarvis-desktop",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "version": "1.0.0",
+  "description": "JARVIS Personal Operating System",
+  "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "vite", "start": "electron .",
-    "build": "tsc -b && vite build",
+    "dev:frontend": "vite",
+    "dev:electron": "tsc -p tsconfig.node.json && electron .",
+    "dev": "concurrently -k \"npm run dev:frontend\" \"wait-on http://localhost:5173 && npm run dev:electron\"",
+    "build:frontend": "tsc -b && vite build",
+    "build:electron": "tsc -p tsconfig.node.json",
+    "build:backend": "cd ../../backend && .\\venv\\Scripts\\activate && pyinstaller --onefile --distpath ../apps/desktop/resources/backend --name jarvis_backend src/main.py",
+    "build": "npm run build:frontend && npm run build:electron && npm run build:backend && electron-builder --win",
     "lint": "eslint .",
     "preview": "vite preview"
   },
-  "dependencies": {
+    "autoprefixer": "^10.5.0",
+    "clsx": "^2.1.1",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.17.0",
+    "postcss": "^8.5.15",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.17.0",
+    "tailwind-merge": "^3.6.0",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
@@ -27,14 +36,42 @@
     "concurrently": "^10.0.3",
     "cross-env": "^10.1.0",
     "electron": "^42.3.3",
+    "electron-builder": "^26.15.0",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
     "tailwindcss": "^4.3.0",
+    "ts-node": "^10.9.2",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
     "vite": "^8.0.12",
-    "wait-on": "^9.0.10"
+  },
+  "build": {
+    "appId": "com.harsha.jarvis",
+    "productName": "JARVIS",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist-react/**/*",
+      "dist-electron/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/backend",
+        "to": "backend",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": ["nsis", "portable"]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "runAfterFinish": true
+    }
   }
 }
