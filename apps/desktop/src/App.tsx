@@ -61,7 +61,7 @@ function App() {
     
     const connect = () => {
       setConnectionStatus('connecting');
-      ws = new WebSocket(`ws://localhost:8000/ws/default-session`);
+      ws = new WebSocket(`ws://localhost:8765/ws/default-session`);
       
       ws.onopen = () => {
         setConnectionStatus('connected');
@@ -140,7 +140,7 @@ function App() {
     
     setCoreState('thinking');
     // Send message to websocket
-    const ws = new WebSocket(`ws://localhost:8000/ws/default-session`);
+    const ws = new WebSocket(`ws://localhost:8765/ws/default-session`);
     ws.onopen = () => {
       ws.send(JSON.stringify({ type: 'chat_message', content: inputText }));
     };
