@@ -41,6 +41,13 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+from src.services.companion_agent import companion_agent
+from src.services.founder_mode import founder_mode
+from src.services.voice_system import voice_system
+
+# Attempt to init voice on startup
+voice_system.initialize()
+
 @app.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str, token: str = None):
     # In production: Verify token
@@ -50,11 +57,23 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, token: str =
             data = await websocket.receive_text()
             message = json.loads(data)
             
-            # Simple echo for Phase 1A testing
             if message.get("type") == "chat_message":
+                user_content = message.get('content')
+                
+                # Check for Founder Mode triggers
+                if "/founder" in user_content.lower():
+                    founder_mode.activate()
+                    response_text = "Founder Mode Activated. Let's get to work."
+                elif "/exit founder" in user_content.lower():
+                    founder_mode.deactivate()
+                    response_text = "Founder Mode Deactivated."
+                else:
+                    # Pass through Companion Agent
+                    response_text = companion_agent.generate_response(user_content, session_id)
+                
                 response = {
                     "type": "token",
-                    "text": f"JARVIS received: {message.get('content')}"
+                    "text": response_text
                 }
                 await manager.send_personal_message(json.dumps(response), websocket)
                 
