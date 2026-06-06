@@ -14,8 +14,8 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
   const [description, setDescription] = useState('');
   const [attachLogs, setAttachLogs] = useState(false);
 
-  const FOUNDER_EMAIL = "founder@jarvis-os.com"; // To be updated by founder
-  const WHATSAPP_NUMBER = "+1234567890"; // To be updated by founder
+  const FOUNDER_EMAIL = "harshavardhan414212@gmail.com";
+  const WHATSAPP_NUMBER = "+91 9908234531";
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,7 +1,10 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import json
-import os
 import sentry_sdk
 from src.database import engine, Base
 from src.api import sessions, memories, settings
@@ -54,11 +57,13 @@ from langchain_core.messages import HumanMessage
 from src.services.voice_system import voice_system
 from src.services.scheduler import proactive_scheduler
 
-# Attempt to init voice on startup
-voice_system.initialize()
-
-# Initialize proactive scheduler
-proactive_scheduler.initialize(manager)
+@app.on_event("startup")
+async def startup_event():
+    # Attempt to init voice on startup
+    voice_system.initialize()
+    
+    # Initialize proactive scheduler inside event loop
+    proactive_scheduler.initialize(manager)
 
 @app.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str, token: str = None):
@@ -119,3 +124,11 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, token: str =
 @app.get("/api/v1/system/health")
 async def health_check():
     return {"success": True, "data": {"status": "online"}, "error": None}
+
+if __name__ == "__main__":
+    import uvicorn
+    import sys
+    import os
+    # Ensure backend directory is in path so 'src.*' imports work when run directly
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+    uvicorn.run(app, host="127.0.0.1", port=8765)
