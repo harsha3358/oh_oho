@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Shield, Key, CheckCircle, Database, Lock, Box, BrainCircuit, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -8,6 +8,15 @@ export default function WelcomeWizard({ onComplete }: { onComplete: () => void }
   const [apiKey, setApiKey] = useState('');
   const [saving, setSaving] = useState(false);
   const [optInTelemetry, setOptInTelemetry] = useState(false);
+
+  useEffect(() => {
+    if (step === 4) {
+      const timer = setTimeout(() => {
+        setStep(5);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
 
   const handleSaveAndContinue = async () => {
     if (step === 3) {
@@ -172,18 +181,20 @@ export default function WelcomeWizard({ onComplete }: { onComplete: () => void }
 
           {/* Footer Controls */}
           <div className="absolute bottom-10 right-10 left-10 flex justify-between items-center">
-            {step > 1 && step < 5 ? (
+            {step > 1 && step < 4 ? (
               <button onClick={() => setStep(s => s - 1)} className="text-white/50 hover:text-white transition-colors text-sm font-medium">Back</button>
             ) : <div></div>}
             
-            <button 
-              onClick={handleSaveAndContinue}
-              disabled={saving}
-              className="bg-primary text-dark px-6 py-2.5 rounded-full font-medium flex items-center gap-2 hover:scale-105 transition-transform disabled:opacity-50"
-            >
-              {saving ? 'Saving...' : step === 5 ? "Launch Harsha's Assistant" : 'Continue'} 
-              {!saving && step !== 5 && <ArrowRight size={16} />}
-            </button>
+            {step !== 4 && (
+              <button 
+                onClick={handleSaveAndContinue}
+                disabled={saving}
+                className="bg-primary text-dark px-6 py-2.5 rounded-full font-medium flex items-center gap-2 hover:scale-105 transition-transform disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : step === 5 ? "Launch Harsha's Assistant" : 'Continue'} 
+                {!saving && step !== 5 && <ArrowRight size={16} />}
+              </button>
+            )}
           </div>
 
         </div>

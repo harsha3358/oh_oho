@@ -2,6 +2,10 @@ import { app, BrowserWindow, ipcMain, safeStorage, Tray, Menu, globalShortcut } 
 import * as path from 'path';
 import * as fs from 'fs';
 import { spawn, ChildProcess } from 'child_process';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 let mainWindow: BrowserWindow | null = null;
 let backendProcess: ChildProcess | null = null;
@@ -29,16 +33,29 @@ function startPythonBackend() {
   const secrets = readSecrets();
   let geminiKey = '';
   
+  console.log('[Credential Trace] Key exists in safeStorage JSON?:', !!secrets['GEMINI_API_KEY']);
+  
   if (secrets['GEMINI_API_KEY']) {
     try {
-      if (safeStorage.isEncryptionAvailable()) {
-        const encryptedBuffer = Buffer.from(secrets['GEMINI_API_KEY'], 'base64');
+      if (safeStorage.isEncryptionAvailable() && secrets['GEMINI_API_KEY'].startsWith('ENC:')) {
+        const encryptedBuffer = Buffer.from(secrets['GEMINI_API_KEY'].slice(4), 'base64');
         geminiKey = safeStorage.decryptString(encryptedBuffer);
+        console.log('[Credential Trace] Key decrypted?: YES');
+      } else {
+        // Fallback or unencrypted
+        geminiKey = secrets['GEMINI_API_KEY'].replace('ENC:', '');
+        console.log('[Credential Trace] Key decrypted?: UNENCRYPTED RAW KEY LOADED');
       }
     } catch (e) {
-      console.error('Failed to decrypt API key', e);
+      console.error('[Credential Trace] Failed to decrypt API key', e);
+      geminiKey = secrets['GEMINI_API_KEY'].replace('ENC:', ''); // raw fallback
+      console.log('[Credential Trace] Key decrypted?: FAILED - USING RAW FALLBACK');
     }
+  } else {
+    console.log('[Credential Trace] Key loaded?: NO');
   }
+
+  console.log('[Credential Trace] Key passed to backend?:', geminiKey.length > 5 ? 'YES' : 'NO');
 
   const env = { ...process.env, GEMINI_API_KEY: geminiKey };
   const isDev = !app.isPackaged;
@@ -95,7 +112,7 @@ function createWindow() {
 function createTray() {
   const iconPath = app.isPackaged 
     ? path.join(process.resourcesPath, 'tray-icon.png')
-    : path.join(__dirname, '../../public/tray-icon.png');
+    : path.join(__dirname, '../public/tray-icon.png');
     
   tray = new Tray(iconPath);
   
@@ -123,10 +140,12 @@ app.whenReady().then(() => {
 
   // Setup IPC for safeStorage
   ipcMain.handle('secure-store-set', (event, key: string, value: string) => {
-    if (!safeStorage.isEncryptionAvailable()) return false;
-    const encrypted = safeStorage.encryptString(value).toString('base64');
+    let storedValue = value;
+    if (safeStorage.isEncryptionAvailable()) {
+      storedValue = 'ENC:' + safeStorage.encryptString(value).toString('base64');
+    }
     const secrets = readSecrets();
-    secrets[key] = encrypted;
+    secrets[key] = storedValue;
     writeSecrets(secrets);
     
     // Restart backend to inject new environment variables if needed
@@ -140,15 +159,18 @@ app.whenReady().then(() => {
   ipcMain.handle('secure-store-get', (event, key: string) => {
     const secrets = readSecrets();
     if (!secrets[key]) return null;
-    if (!safeStorage.isEncryptionAvailable()) return null;
     
-    try {
-      const buffer = Buffer.from(secrets[key], 'base64');
-      return safeStorage.decryptString(buffer);
-    } catch (e) {
-      console.error('Failed to decrypt', e);
-      return null;
+    if (safeStorage.isEncryptionAvailable() && secrets[key].startsWith('ENC:')) {
+      try {
+        const buffer = Buffer.from(secrets[key].slice(4), 'base64');
+        return safeStorage.decryptString(buffer);
+      } catch (e) {
+        console.error('Failed to decrypt', e);
+        return null;
+      }
     }
+    
+    return secrets[key].replace('ENC:', '');
   });
 
   startPythonBackend();

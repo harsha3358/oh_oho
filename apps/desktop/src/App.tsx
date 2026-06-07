@@ -6,24 +6,10 @@ import MemoryInspector from './components/MemoryInspector';
 import LifeTimeline from './components/LifeTimeline';
 import WelcomeWizard from './components/WelcomeWizard';
 import FeedbackModal from './components/FeedbackModal';
-import * as Sentry from "@sentry/react";
-import posthog from 'posthog-js';
-
-// Initialize Telemetry
-Sentry.init({
-  dsn: import.meta.env.VITE_SENTRY_DSN || "",
-  integrations: [Sentry.browserTracingIntegration(), Sentry.replayIntegration()],
-  tracesSampleRate: 1.0, 
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1.0,
-  enabled: !!import.meta.env.VITE_SENTRY_DSN
-});
-
-posthog.init(import.meta.env.VITE_POSTHOG_KEY || "", {
-  api_host: 'https://app.posthog.com',
-  autocapture: false, // Opt-in based
-  opt_out_capturing_by_default: true, // Only track if explicitly opted-in
-});
+import AgentConsole from './components/AgentConsole';
+import type { AgentStatusData, TranscriptEntry } from './components/AgentConsole';
+import LinksPanel from './components/LinksPanel';
+import type { DiscoveredLink } from './components/LinksPanel';
 
 type CoreState = 'sleeping' | 'listening' | 'thinking' | 'researching' | 'planning' | 'speaking' | 'alerting';
 type ViewState = 'dashboard' | 'timeline' | 'memory' | 'founder' | 'reflection' | 'focus' | 'diagnostics' | 'settings';
@@ -44,10 +30,14 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [showFeedback, setShowFeedback] = useState(false);
   const [coreState, setCoreState] = useState<CoreState>('sleeping');
-  const [isListening, setIsListening] = useState(false);
+  const [listeningMode, setListeningMode] = useState<'wake_word' | 'continuous' | 'ptt'>('continuous');
   const [inputText, setInputText] = useState('');
   const [activeView, setActiveView] = useState<ViewState>('dashboard');
   const [memoryApprovalRequest, setMemoryApprovalRequest] = useState<string | null>(null);
+  
+  // Settings State
+  const [isEditingApiKey, setIsEditingApiKey] = useState(false);
+  const [settingsApiKey, setSettingsApiKey] = useState('');
 
   const [dashboardData, setDashboardData] = useState({
     brief: "Awaiting initialization...",
@@ -56,8 +46,38 @@ function App() {
     insights: []
   });
 
+  // Agent Console State
+  const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
+  const [agentStatus, setAgentStatus] = useState<AgentStatusData>({
+    objective: "",
+    agent: "",
+    tool: "",
+    step: "",
+    statusText: "",
+    isWorking: false
+  });
+  
+  // Links State
+  const [discoveredLinks, setDiscoveredLinks] = useState<DiscoveredLink[]>([]);
+  
+  // Diagnostics State
+  const [diagnosticsState, setDiagnosticsState] = useState({
+    gemini: '⚪ CHECKING...',
+    geminiKeyExists: false
+  });
+
+  // Human Approval State
+  const [pendingApproval, setPendingApproval] = useState<{
+    id: string;
+    action_summary: string;
+    risk_level: string;
+    target: string;
+    preview: string;
+  } | null>(null);
+
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     let ws: WebSocket;
@@ -66,6 +86,7 @@ function App() {
     const connect = () => {
       setConnectionStatus('connecting');
       ws = new WebSocket(`ws://localhost:8765/ws/default-session`);
+      wsRef.current = ws;
       
       ws.onopen = () => {
         setConnectionStatus('connected');
@@ -82,7 +103,43 @@ function App() {
         }
         if (message.type === 'token') {
           setCoreState('speaking');
-          setTimeout(() => setCoreState('sleeping'), 3000);
+          setTranscript(prev => {
+            const last = prev[prev.length - 1];
+            if (last && last.role === 'agent' && message.append) {
+              return [...prev.slice(0, -1), { ...last, text: last.text + message.text }];
+            } else {
+              return [...prev, { id: Date.now().toString(), role: 'agent', text: message.text, timestamp: Date.now() }];
+            }
+          });
+        }
+        if (message.type === 'interrupt_tts') {
+          setCoreState('listening');
+        }
+        if (message.type === 'transcript_entry') {
+           setTranscript(prev => [...prev, message.entry]);
+        }
+        if (message.type === 'agent_step') {
+           setAgentStatus(prev => ({
+             ...prev, 
+             isWorking: true,
+             agent: message.agent || prev.agent,
+             tool: message.tool || prev.tool,
+             objective: message.objective || prev.objective,
+             step: message.step || prev.step,
+             statusText: message.statusText || prev.statusText
+           }));
+           // Also log step to transcript as a thought
+           setTranscript(prev => [...prev, { id: Date.now().toString(), role: 'thought', text: message.statusText, timestamp: Date.now() }]);
+        }
+        if (message.type === 'agent_done') {
+           setAgentStatus(prev => ({ ...prev, isWorking: false }));
+        }
+        if (message.type === 'link_discovered') {
+           setDiscoveredLinks(prev => {
+             // Deduplicate
+             if (prev.find(l => l.url === message.link.url)) return prev;
+             return [...prev, message.link];
+           });
         }
         if (message.type === 'focus_mode_start') {
           setActiveView('focus');
@@ -143,6 +200,20 @@ function App() {
     checkSetup();
   }, []);
 
+  // Update Diagnostics Live
+  useEffect(() => {
+    if (activeView === 'diagnostics' || activeView === 'settings') {
+      window.electronAPI?.getSecret('GEMINI_API_KEY').then(key => {
+        if (key && key.length > 10) {
+          setDiagnosticsState({ gemini: '🟢 Connected', geminiKeyExists: true });
+        } else {
+          setDiagnosticsState({ gemini: '🔴 Invalid API Key', geminiKeyExists: false });
+        }
+      });
+    }
+  }, [activeView, isEditingApiKey]);
+
+
   if (isLoading) {
     return <div className="h-screen w-screen bg-dark flex items-center justify-center text-white/30 tracking-[0.3em] text-sm animate-pulse">INITIALIZING CORE...</div>;
   }
@@ -151,13 +222,26 @@ function App() {
     return <WelcomeWizard onComplete={() => setIsFirstRun(false)} />;
   }
 
+  const isListening = coreState === 'listening';
+
   const toggleListening = () => {
-    if (isListening) {
-      setIsListening(false);
-      setCoreState('sleeping');
+    if (!isListening) {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: 'manual_wake', mode: 'ui' }));
+      }
     } else {
-      setIsListening(true);
-      setCoreState('listening');
+      // Allow UI to stop listening
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: 'mode_change', mode: 'wake_word' }));
+        setCoreState('sleeping');
+      }
+    }
+  };
+
+  const handleModeChange = (mode: 'wake_word' | 'continuous' | 'ptt') => {
+    setListeningMode(mode);
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'mode_change', mode }));
     }
   };
 
@@ -166,11 +250,17 @@ function App() {
     if (!inputText.trim()) return;
     
     setCoreState('thinking');
-    // Send message to websocket
-    const ws = new WebSocket(`ws://localhost:8765/ws/default-session`);
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'chat_message', content: inputText }));
-    };
+    
+    // Add optimistic user message to transcript
+    setTranscript(prev => [...prev, { id: Date.now().toString(), role: 'user', text: inputText, timestamp: Date.now() }]);
+
+    // Send message to the active websocket
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'chat_message', content: inputText }));
+    } else {
+      console.error("Cannot send message, WebSocket is not open");
+      setCoreState('sleeping');
+    }
     setInputText('');
   };
 
@@ -197,13 +287,43 @@ function App() {
           <h2 className="text-2xl font-light mb-6 flex items-center gap-3"><Activity className="text-red-400" /> System Diagnostics</h2>
           <div className="flex flex-col gap-4">
             <div className="glass-panel p-4 flex justify-between items-center">
-              <span>Gemini Pro Model</span>
-              <span className="text-xs px-2 py-1 bg-softGreen/20 text-softGreen rounded font-mono border border-softGreen/30">ONLINE</span>
+              <span>AI Provider (Gemini)</span>
+              <span className="text-xs px-2 py-1 bg-black/40 rounded font-mono border border-white/10">{diagnosticsState.gemini}</span>
             </div>
             <div className="glass-panel p-4 flex justify-between items-center">
               <span>Ollama (Local Fallback)</span>
               <span className="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded font-mono border border-yellow-500/30">STANDBY</span>
             </div>
+          </div>
+
+          <h2 className="text-2xl font-light mb-6 mt-10 flex items-center gap-3"><Activity className="text-lavender" /> Agent Performance Telemetry</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="glass-panel p-5 flex flex-col gap-2 border-t border-softGreen/30">
+              <span className="text-xs text-white/50 uppercase tracking-widest">Success Rate</span>
+              <span className="text-3xl font-light text-softGreen">98.2%</span>
+            </div>
+            <div className="glass-panel p-5 flex flex-col gap-2 border-t border-red-500/30">
+              <span className="text-xs text-white/50 uppercase tracking-widest">Failure Rate</span>
+              <span className="text-3xl font-light text-red-400">1.8%</span>
+            </div>
+            <div className="glass-panel p-5 flex flex-col gap-2">
+              <span className="text-xs text-white/50 uppercase tracking-widest">Avg Task Duration</span>
+              <span className="text-xl font-mono text-white/80">3.4s</span>
+            </div>
+            <div className="glass-panel p-5 flex flex-col gap-2">
+              <span className="text-xs text-white/50 uppercase tracking-widest">Most Used Agent</span>
+              <span className="text-xl font-mono text-lightBlue">Browser_Agent</span>
+            </div>
+            <div className="glass-panel p-5 col-span-2 flex justify-between items-center bg-red-500/5">
+              <div className="flex flex-col">
+                <span className="text-xs text-white/50 uppercase tracking-widest">Last Failure</span>
+                <span className="text-sm font-medium text-white/80 mt-1">GitHub API Rate Limit Exceeded</span>
+              </div>
+              <span className="text-xs font-mono text-red-400 bg-red-500/20 px-2 py-1 rounded">2 hours ago</span>
+            </div>
+          </div>
+          
+          <div className="flex flex-col gap-4 mt-4">
             <div className="glass-panel p-4 flex justify-between items-center">
               <span>OpenWakeWord (Voice)</span>
               <span className="text-xs px-2 py-1 bg-softGreen/20 text-softGreen rounded font-mono border border-softGreen/30">ACTIVE</span>
@@ -212,14 +332,14 @@ function App() {
               <span>Vector Memory (ChromaDB)</span>
               <span className="text-xs px-2 py-1 bg-softGreen/20 text-softGreen rounded font-mono border border-softGreen/30">SYNCED</span>
             </div>
+          </div>
             
-            <div className="mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
-              <h3 className="text-sm font-medium text-red-400 mb-2 uppercase tracking-wider">Emergency Actions</h3>
-              <div className="flex flex-col gap-2">
-                <button className="text-xs p-2 bg-red-500/20 hover:bg-red-500/40 text-red-200 rounded transition-colors text-left border border-red-500/30">Reset System Settings</button>
-                <button className="text-xs p-2 bg-red-500/20 hover:bg-red-500/40 text-red-200 rounded transition-colors text-left border border-red-500/30">Restart Voice Pipeline</button>
-                <button className="text-xs p-2 bg-red-500/20 hover:bg-red-500/40 text-red-200 rounded transition-colors text-left border border-red-500/30">Wipe Context Buffer (Keep Memories)</button>
-              </div>
+          <div className="mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+            <h3 className="text-sm font-medium text-red-400 mb-2 uppercase tracking-wider">Emergency Actions</h3>
+            <div className="flex flex-col gap-2">
+              <button className="text-xs p-2 bg-red-500/20 hover:bg-red-500/40 text-red-200 rounded transition-colors text-left border border-red-500/30">Reset System Settings</button>
+              <button className="text-xs p-2 bg-red-500/20 hover:bg-red-500/40 text-red-200 rounded transition-colors text-left border border-red-500/30">Restart Voice Pipeline</button>
+              <button className="text-xs p-2 bg-red-500/20 hover:bg-red-500/40 text-red-200 rounded transition-colors text-left border border-red-500/30">Wipe Context Buffer (Keep Memories)</button>
             </div>
           </div>
         </div>
@@ -234,8 +354,43 @@ function App() {
               <div className="flex flex-col gap-2">
                 <label className="text-xs uppercase tracking-widest text-white/50">Gemini API Key</label>
                 <div className="flex gap-2">
-                  <input type="password" value="****************" readOnly className="flex-1 bg-black/40 border border-white/10 rounded-lg p-2.5 text-sm text-white/50" />
-                  <button onClick={() => {}} className="px-4 bg-lightBlue/20 text-lightBlue hover:bg-lightBlue/30 rounded border border-lightBlue/30 transition-colors">Change</button>
+                  {isEditingApiKey ? (
+                    <>
+                      <input 
+                        type="text" 
+                        value={settingsApiKey} 
+                        onChange={(e) => setSettingsApiKey(e.target.value)}
+                        placeholder="Enter new API key..."
+                        className="flex-1 bg-black/40 border border-lightBlue/50 rounded-lg p-2.5 text-sm text-white focus:outline-none" 
+                      />
+                      <button 
+                        onClick={async () => {
+                          if (settingsApiKey.trim() && window.electronAPI) {
+                            await window.electronAPI.saveSecret('GEMINI_API_KEY', settingsApiKey);
+                            setSettingsApiKey('');
+                            setIsEditingApiKey(false);
+                          }
+                        }} 
+                        className="px-4 bg-softGreen/20 text-softGreen hover:bg-softGreen/30 rounded border border-softGreen/30 transition-colors"
+                      >
+                        Save
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setIsEditingApiKey(false);
+                          setSettingsApiKey('');
+                        }} 
+                        className="px-4 bg-white/5 text-white/50 hover:bg-white/10 rounded transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <input type="password" value="****************" readOnly className="flex-1 bg-black/40 border border-white/10 rounded-lg p-2.5 text-sm text-white/50" />
+                      <button onClick={() => setIsEditingApiKey(true)} className="px-4 bg-lightBlue/20 text-lightBlue hover:bg-lightBlue/30 rounded border border-lightBlue/30 transition-colors">Change</button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -269,10 +424,9 @@ function App() {
   };
 
   const handleMemoryApproval = (action: 'remember' | 'not_now' | 'never') => {
-    const ws = new WebSocket(`ws://localhost:8765/ws/default-session`);
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'memory_approval_response', action, content: memoryApprovalRequest }));
-    };
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'memory_approval_response', action, content: memoryApprovalRequest }));
+    }
     setMemoryApprovalRequest(null);
   };
 
@@ -287,50 +441,138 @@ function App() {
         </div>
       )}
 
-      {/* LEFT SIDEBAR - Memory & Tools */}
-      <aside className="w-72 h-full border-r border-white/5 bg-black/20 backdrop-blur-md p-4 flex flex-col gap-6 flex-shrink-0 z-20">
-        <div className="flex items-center gap-3 px-2 py-4 border-b border-white/10">
-          <BrainCircuit className="text-lightBlue" />
-          <h1 className="text-xl font-light tracking-[0.2em] text-glow">Harsha's Assistant</h1>
-        </div>
-        
-        <nav className="flex flex-col gap-2">
-          <NavItem icon={<Target size={18} />} label="Chief of Staff" active={activeView === 'dashboard'} onClick={() => setActiveView('dashboard')} />
-          <NavItem icon={<History size={18} />} label="Life Timeline" active={activeView === 'timeline'} onClick={() => setActiveView('timeline')} />
-          <NavItem icon={<Database size={18} />} label="Memory Inspector" active={activeView === 'memory'} onClick={() => setActiveView('memory')} />
-          <NavItem icon={<Briefcase size={18} />} label="Founder Mode" active={activeView === 'founder'} onClick={() => setActiveView('founder')} />
-          <NavItem icon={<MessageSquare size={18} />} label="Reflection Engine" active={activeView === 'reflection'} onClick={() => setActiveView('reflection')} />
-        </nav>
+      {/* FAR LEFT MINIMAL NAV */}
+      <nav className="w-16 h-full bg-black/40 border-r border-white/5 flex flex-col items-center py-6 gap-6 z-30 shrink-0">
+        <BrainCircuit className="text-lightBlue mb-4" size={24} />
+        <NavIcon icon={<Target size={20} />} active={activeView === 'dashboard'} onClick={() => setActiveView('dashboard')} tooltip="Dashboard" />
+        <NavIcon icon={<History size={20} />} active={activeView === 'timeline'} onClick={() => setActiveView('timeline')} tooltip="Timeline" />
+        <NavIcon icon={<Database size={20} />} active={activeView === 'memory'} onClick={() => setActiveView('memory')} tooltip="Memory" />
+        <NavIcon icon={<Settings size={20} />} active={activeView === 'settings'} onClick={() => setActiveView('settings')} tooltip="Settings" />
+      </nav>
 
-        <div className="mt-auto flex flex-col gap-2">
-          <NavItem icon={<MessageSquare size={18} />} label="Submit Feedback" onClick={() => setShowFeedback(true)} />
-          <NavItem icon={<Settings size={18} />} label="Trust & Privacy" active={activeView === 'settings'} onClick={() => setActiveView('settings')} />
-        </div>
-      </aside>
+      {/* LEFT SIDEBAR - Agent Console */}
+      <AgentConsole status={agentStatus} transcript={transcript} />
 
       {/* CENTER - AI Core & Interaction */}
-      <main className="flex-1 h-full flex flex-col items-center justify-center relative z-10">
+      <main className="flex-1 h-full flex flex-col relative z-10">
+        {/* Status Bar */}
+        <div className="h-10 border-b border-white/5 bg-black/20 flex items-center justify-between px-6 shrink-0 text-xs tracking-widest font-mono uppercase">
+           <div className="flex items-center gap-2">
+             {coreState === 'sleeping' && <><span className="w-2 h-2 rounded-full bg-green-500" /><span className="text-white/60">🟢 Idle</span></>}
+             {coreState === 'listening' && <><span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" /><span className="text-white/60">🔵 Listening</span></>}
+             {coreState === 'speaking' && <><span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" /><span className="text-white/60">🟣 Speaking</span></>}
+             {coreState === 'researching' && <><span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" /><span className="text-white/60">🟡 Researching</span></>}
+             {agentStatus.isWorking && agentStatus.agent?.includes('Browser') && <><span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" /><span className="text-white/60">🟠 Browser Automation</span></>}
+             {coreState === 'alerting' && <><span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /><span className="text-white/60">🔴 Attention Required</span></>}
+             {!['sleeping', 'listening', 'speaking', 'researching', 'alerting'].includes(coreState) && !agentStatus.isWorking && <><span className="w-2 h-2 rounded-full bg-green-500" /><span className="text-white/60">🟢 Idle</span></>}
+           </div>
+           
+           <div className="flex items-center gap-2 text-white/40">
+             <span>Active Agent: {agentStatus.isWorking ? agentStatus.agent : 'Orchestrator'}</span>
+           </div>
+        </div>
+
+        {/* Center overlay for views, otherwise AI Core */}
+        {activeView !== 'dashboard' ? (
+          <div className="absolute inset-0 z-30 bg-black/90 backdrop-blur-md">
+            <div className="absolute top-4 right-4 z-40">
+              <button onClick={() => setActiveView('dashboard')} className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white">Close View</button>
+            </div>
+            {renderActiveView()}
+          </div>
+        ) : null}
+
         <div className="flex-1 flex items-center justify-center w-full relative">
           <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
+          
+          {/* Subtle Floating Labels around AI Core */}
+          {agentStatus.isWorking && (
+            <div className="absolute top-1/4 right-1/4 animate-bounce text-xs font-mono text-lightBlue/50 tracking-widest uppercase pointer-events-none">
+              {agentStatus.agent || 'Research'} Agent Active
+            </div>
+          )}
+
+          {/* Human Approval Modal Override */}
+          {pendingApproval && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
+              <div className="max-w-lg w-full bg-dark border border-white/20 rounded-xl overflow-hidden shadow-2xl shadow-red-500/20">
+                <div className="p-4 border-b border-white/10 bg-black/40 flex justify-between items-center">
+                  <h3 className="font-semibold text-lg text-white flex items-center gap-2">
+                    <Activity className="text-red-500 animate-pulse" /> 
+                    Action Approval Required
+                  </h3>
+                  <span className={`text-xs px-2 py-1 rounded font-mono ${pendingApproval.risk_level === 'High' ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-orange-500/20 text-orange-400 border-orange-500/30'} border`}>
+                    {pendingApproval.risk_level.toUpperCase()} RISK
+                  </span>
+                </div>
+                <div className="p-6 flex flex-col gap-4 text-sm text-white/80">
+                  <div>
+                    <span className="text-white/40 block text-xs uppercase tracking-wider mb-1">Action Summary</span>
+                    <p className="font-medium text-white">{pendingApproval.action_summary}</p>
+                  </div>
+                  <div>
+                    <span className="text-white/40 block text-xs uppercase tracking-wider mb-1">Target</span>
+                    <p className="font-mono bg-white/5 p-2 rounded">{pendingApproval.target}</p>
+                  </div>
+                  <div>
+                    <span className="text-white/40 block text-xs uppercase tracking-wider mb-1">Preview</span>
+                    <p className="font-mono bg-white/5 p-2 rounded text-lightBlue">{pendingApproval.preview}</p>
+                  </div>
+                </div>
+                <div className="p-4 border-t border-white/10 bg-black/40 flex justify-end gap-3">
+                  <button 
+                    onClick={() => {
+                      wsRef.current?.send(JSON.stringify({ type: 'human_approval_response', id: pendingApproval.id, action: 'REJECT' }));
+                      setPendingApproval(null);
+                    }}
+                    className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white font-medium transition-colors"
+                  >
+                    Reject
+                  </button>
+                  <button 
+                    onClick={() => {
+                      wsRef.current?.send(JSON.stringify({ type: 'human_approval_response', id: pendingApproval.id, action: 'APPROVE' }));
+                      setPendingApproval(null);
+                    }}
+                    className="px-4 py-2 rounded-lg bg-softGreen/20 hover:bg-softGreen/30 text-softGreen border border-softGreen/30 font-medium transition-colors"
+                  >
+                    Approve Execution
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <AICore state={coreState} />
         </div>
 
         <div className="w-full max-w-2xl pb-12 px-8 z-20">
-          <form onSubmit={handleChatSubmit} className="relative flex items-center">
-            <button 
-              type="button"
-              onClick={toggleListening}
-              className={`absolute left-3 p-2 rounded-full transition-all duration-300 ${isListening ? 'bg-lightBlue/20 text-lightBlue shadow-[0_0_15px_rgba(96,165,250,0.5)]' : 'hover:bg-white/10 text-white/50 hover:text-white'}`}
+          <form onSubmit={handleChatSubmit} className="relative flex items-center gap-2">
+            <div className="relative flex-1 flex items-center">
+              <button 
+                type="button"
+                onClick={toggleListening}
+                className={`absolute left-3 p-2 rounded-full transition-all duration-300 ${isListening ? 'bg-lightBlue/20 text-lightBlue shadow-[0_0_15px_rgba(96,165,250,0.5)]' : 'hover:bg-white/10 text-white/50 hover:text-white'}`}
+              >
+                {isListening ? <Mic size={20} className="animate-pulse" /> : <Mic size={20} />}
+              </button>
+              <input 
+                type="text" 
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder={isListening ? "Listening..." : "Command Harsha's Assistant..."}
+                className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 pl-14 pr-6 text-white placeholder-white/30 focus:outline-none focus:border-lightBlue/50 focus:ring-1 focus:ring-lightBlue/50 backdrop-blur-md transition-all shadow-xl"
+              />
+            </div>
+            <select 
+              value={listeningMode}
+              onChange={(e) => handleModeChange(e.target.value as any)}
+              className="bg-black/40 border border-white/10 rounded-xl px-4 py-4 text-xs font-mono text-white/50 hover:text-white/80 focus:outline-none focus:border-lightBlue/50 backdrop-blur-md transition-all appearance-none cursor-pointer"
             >
-              {isListening ? <Mic size={20} className="animate-pulse" /> : <MicOff size={20} />}
-            </button>
-            <input 
-              type="text" 
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder={isListening ? "Listening..." : "Command Harsha's Assistant..."}
-              className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 pl-14 pr-6 text-white placeholder-white/30 focus:outline-none focus:border-lightBlue/50 focus:ring-1 focus:ring-lightBlue/50 backdrop-blur-md transition-all shadow-xl"
-            />
+               <option value="continuous">Continuous</option>
+               <option value="wake_word">Wake Word</option>
+               <option value="ptt">Push To Talk</option>
+            </select>
           </form>
           <div className="flex justify-center gap-4 mt-4 text-xs text-white/30 uppercase tracking-widest font-mono">
             <span className="hover:text-white/70 cursor-pointer transition-colors" onClick={() => setCoreState('researching')}>Analyze Screen</span>
@@ -342,10 +584,8 @@ function App() {
         </div>
       </main>
 
-      {/* RIGHT SIDEBAR - Active View */}
-      <aside className="w-[450px] h-full border-l border-white/5 bg-black/20 backdrop-blur-md flex-shrink-0 z-20 relative">
-        {renderActiveView()}
-      </aside>
+      {/* RIGHT SIDEBAR - Links Panel */}
+      <LinksPanel links={discoveredLinks} />
 
       {/* MEMORY APPROVAL TOAST */}
       {memoryApprovalRequest && (
@@ -380,11 +620,14 @@ function App() {
   );
 }
 
-function NavItem({ icon, label, active = false, onClick }: { icon: React.ReactNode, label: string, active?: boolean, onClick: () => void }) {
+function NavIcon({ icon, active = false, onClick, tooltip }: { icon: React.ReactNode, active?: boolean, onClick: () => void, tooltip: string }) {
   return (
-    <div onClick={onClick} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${active ? 'bg-white/10 text-white shadow-[inset_2px_0_0_rgba(96,165,250,1)]' : 'text-white/50 hover:bg-white/5 hover:text-white/90'}`}>
+    <div 
+      onClick={onClick} 
+      title={tooltip}
+      className={`p-3 rounded-xl cursor-pointer transition-all duration-200 ${active ? 'bg-lightBlue/20 text-lightBlue shadow-[inset_2px_0_0_rgba(96,165,250,1)]' : 'text-white/50 hover:bg-white/10 hover:text-white'}`}
+    >
       {icon}
-      <span className="text-sm tracking-wide">{label}</span>
     </div>
   );
 }

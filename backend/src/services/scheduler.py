@@ -24,6 +24,9 @@ class ProactiveScheduler:
         # Accountability Scanner (Runs periodically)
         self.scheduler.add_job(self.scan_goals, 'interval', hours=12)
         
+        # Autonomous Agent Sweep (Runs every 4 hours)
+        self.scheduler.add_job(self.agent_monitoring_sweep, 'interval', hours=4)
+        
         self.scheduler.start()
 
     async def _send_notification(self, title: str, message: str, type: str = "toast"):
@@ -59,5 +62,18 @@ class ProactiveScheduler:
             nudge = goal_engine.generate_accountability_nudge(g)
             if nudge:
                 await self._send_notification("Goal Accountability Alert", nudge, type="toast")
+
+    async def agent_monitoring_sweep(self):
+        """Autonomously monitors external systems using Agent Mode tools."""
+        from src.agents.agent_mode import execute_agent_mode
+        try:
+            # Track LinkedIn growth and GitHub activity in the background
+            result_linkedin = execute_agent_mode("Check my LinkedIn feed and connection requests. Summarize any important growth.")
+            await self._send_notification("Agent Report: LinkedIn", result_linkedin, type="toast")
+            
+            result_github = execute_agent_mode("Check my GitHub activity and summarize recent PRs or issues.")
+            await self._send_notification("Agent Report: GitHub", result_github, type="toast")
+        except Exception as e:
+            print(f"Agent monitoring sweep failed: {e}")
 
 proactive_scheduler = ProactiveScheduler()

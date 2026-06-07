@@ -108,3 +108,18 @@ class LifeGraphEdge(Base):
     relationship_type = Column(String) # Supports, Blocks, Depends On, Related To
     weight = Column(Float, default=1.0)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class AgentRun(Base):
+    __tablename__ = "agent_runs"
+    id = Column(String, primary_key=True, default=generate_uuid)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    objective = Column(String, nullable=False)
+    agent_used = Column(String)
+    tool_used = Column(String)
+    start_time = Column(DateTime, default=datetime.datetime.utcnow)
+    end_time = Column(DateTime)
+    duration_ms = Column(Integer)
+    status = Column(String) # success, failure, pending_approval
+    result_summary = Column(EncryptedString)
+    confidence_score = Column(String) # High, Medium, Low
+    outcome_details = Column(JSON)

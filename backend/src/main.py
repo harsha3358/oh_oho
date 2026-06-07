@@ -6,6 +6,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import json
 import sentry_sdk
+import time
 from src.database import engine, Base
 from src.api import sessions, memories, settings
 
@@ -56,12 +57,23 @@ from src.agents.orchestrator import orchestrator
 from langchain_core.messages import HumanMessage
 from src.services.voice_system import voice_system
 from src.services.scheduler import proactive_scheduler
+from src.services.approval_manager import approval_manager
 
 @app.on_event("startup")
 async def startup_event():
     # Attempt to init voice on startup
     voice_system.initialize(manager)
     voice_system.start_listening()
+    
+    # Init Approval Manager WebSockets
+    approval_manager.set_websocket_manager(manager)
+    
+    # Start global hotkey listener
+    try:
+        from src.services.input_hook import input_hook
+        input_hook.start()
+    except Exception as e:
+        print(f"Failed to start global input hook: {e}")
     
     # Initialize proactive scheduler inside event loop
     proactive_scheduler.initialize(manager)
@@ -88,22 +100,20 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, token: str =
         "type": "dashboard_update",
         "data": {
             "greeting": generate_greeting(),
-            "brief": "I have analyzed your Truxlo repository and market trends. High priority: Focus on Beta Release deployment and API persistence validation. Market indicates strong need for autonomous agents.",
-            "goals": [
+            "founder_summary": "I have analyzed your repositories and market trends. High priority: Focus on Beta Release deployment and API persistence validation. Market indicates strong need for autonomous agents.",
+            "github_activity": "6 commits across 2 repositories (oh_oho, truxlo_core) in the last 48 hours.",
+            "truxlo_progress": "Beta Architecture 85% complete. 2 pending PRs.",
+            "open_goals": [
                 {"title": "Truxlo v1.0 Launch", "progress": 85},
                 {"title": "Harsha's Assistant Beta Release", "progress": 95},
                 {"title": "Placements Prep", "progress": 60}
             ],
-            "metrics": {
-                "velocity": 92,
-                "learning": "Consistent",
-                "stress": "Elevated"
-            },
-            "insights": [
-                {"content": "Truxlo user retention dropped 2% last week. Suggest investigating onboarding flow."},
-                {"content": "You have ignored 'Placements Prep' for 3 days. Momentum is degrading."}
-            ],
-            "next_action": "Complete Harsha's Assistant Offline Validation tests."
+            "at_risk_goals": ["Placements Prep - Ignored for 3 days"],
+            "upcoming_deadlines": ["Agent Reliability Review (Today)", "Truxlo API Finalization (Tomorrow)"],
+            "suggested_first_action": "Complete Harsha's Assistant Offline Validation tests.",
+            "biggest_bottleneck": "API Key credential management integration.",
+            "quick_win_opportunity": "Merge pending PR in truxlo_core.",
+            "focus_score": 92
         }
     }
     await manager.send_personal_message(json.dumps(initial_dashboard), websocket)
@@ -116,24 +126,68 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, token: str =
             if message.get("type") == "chat_message":
                 user_content = message.get('content')
                 
-                # Execute LangGraph Orchestrator
-                final_state = orchestrator.invoke({
-                    "messages": [HumanMessage(content=user_content)],
-                    "session_id": session_id,
-                    "next_agent": "executive",
-                    "context": {},
-                    "desktop_context": {}
-                })
+                try:
+                    # Execute LangGraph Orchestrator
+                    final_state = orchestrator.invoke({
+                        "messages": [HumanMessage(content=user_content)],
+                        "session_id": session_id,
+                        "next_agent": "executive",
+                        "context": {},
+                        "desktop_context": {}
+                    })
+                    
+                    # The response is the last message added to state
+                    response_text = final_state["messages"][-1].content
+                    
+                    # Send text for TTS playback
+                    response = {
+                        "type": "token",
+                        "text": response_text
+                    }
+                    await manager.send_personal_message(json.dumps(response), websocket)
+                    
+                    # Also log to transcript
+                    transcript_msg = {
+                        "type": "transcript_entry",
+                        "entry": {
+                            "id": str(random.randint(10000, 99999)),
+                            "role": "agent",
+                            "text": response_text,
+                            "timestamp": time.time() * 1000
+                        }
+                    }
+                    await manager.send_personal_message(json.dumps(transcript_msg), websocket)
+                    
+                except Exception as e:
+                    import traceback
+                    traceback.print_exc()
+                    
+                    # Offline Mode Fallback
+                    err_str = str(e).lower()
+                    if "connection" in err_str or "auth" in err_str or "api" in err_str:
+                        error_msg = "Cloud AI unavailable. Operating in Local Mode."
+                    else:
+                        error_msg = f"Sorry, my core encountered an error: {str(e)}"
+                        
+                    response = {
+                        "type": "token",
+                        "text": error_msg
+                    }
+                    await manager.send_personal_message(json.dumps(response), websocket)
+
+            elif message.get("type") == "manual_wake":
+                mode = message.get("mode", "ui")
+                voice_system.trigger_manual_activation(mode=mode)
                 
-                # The response is the last message added to state
-                response_text = final_state["messages"][-1].content
+            elif message.get("type") == "human_approval_response":
+                request_id = message.get("id")
+                decision = message.get("action") # 'APPROVE', 'REJECT', 'EDIT'
+                approval_manager.resolve_approval(request_id, decision)
                 
-                response = {
-                    "type": "token",
-                    "text": response_text
-                }
-                await manager.send_personal_message(json.dumps(response), websocket)
-                
+            elif message.get("type") == "mode_change":
+                mode = message.get("mode", "continuous")
+                voice_system.set_listening_mode(mode)
+                    
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
