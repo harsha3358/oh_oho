@@ -1,10 +1,12 @@
-import { app, BrowserWindow, ipcMain, safeStorage } from 'electron';
+import { app, BrowserWindow, ipcMain, safeStorage, Tray, Menu, globalShortcut } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { spawn, ChildProcess } from 'child_process';
 
 let mainWindow: BrowserWindow | null = null;
 let backendProcess: ChildProcess | null = null;
+let tray: Tray | null = null;
+let isQuitting = false;
 
 const SECRETS_FILE = path.join(app.getPath('userData'), 'jarvis_secrets.json');
 
@@ -39,9 +41,6 @@ function startPythonBackend() {
   }
 
   const env = { ...process.env, GEMINI_API_KEY: geminiKey };
-
-  // In production, this points to the PyInstaller .exe
-  // For dev, we spawn python main.py
   const isDev = !app.isPackaged;
   
   if (isDev) {
@@ -54,7 +53,6 @@ function startPythonBackend() {
       console.error("VENV Python not found at", venvPython);
     }
   } else {
-    // Production bundled exe path
     const backendExe = path.join(process.resourcesPath, 'backend', 'jarvis_backend.exe');
     if (fs.existsSync(backendExe)) {
       backendProcess = spawn(backendExe, [], { env });
@@ -81,13 +79,48 @@ function createWindow() {
 
   if (!app.isPackaged) {
     mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist-react/index.html'));
   }
+
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow?.hide();
+    }
+    return false;
+  });
+}
+
+function createTray() {
+  const iconPath = app.isPackaged 
+    ? path.join(process.resourcesPath, 'tray-icon.png')
+    : path.join(__dirname, '../../public/tray-icon.png');
+    
+  tray = new Tray(iconPath);
+  
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'Open JARVIS', click: () => mainWindow?.show() },
+    { label: 'Founder Briefing', click: () => { mainWindow?.show(); mainWindow?.webContents.send('navigate', 'founder'); } },
+    { label: 'Daily Brief', click: () => { mainWindow?.show(); mainWindow?.webContents.send('navigate', 'dashboard'); } },
+    { label: 'Settings', click: () => { mainWindow?.show(); mainWindow?.webContents.send('navigate', 'settings'); } },
+    { label: 'Diagnostics', click: () => { mainWindow?.show(); mainWindow?.webContents.send('navigate', 'diagnostics'); } },
+    { type: 'separator' },
+    { label: 'Exit JARVIS', click: () => { isQuitting = true; app.quit(); } }
+  ]);
+
+  tray.setToolTip('JARVIS AI Personal OS');
+  tray.setContextMenu(contextMenu);
+  tray.on('click', () => mainWindow?.show());
 }
 
 app.whenReady().then(() => {
+  // Auto Start with Windows setting
+  app.setLoginItemSettings({
+    openAtLogin: true,
+    path: app.getPath("exe")
+  });
+
   // Setup IPC for safeStorage
   ipcMain.handle('secure-store-set', (event, key: string, value: string) => {
     if (!safeStorage.isEncryptionAvailable()) return false;
@@ -120,12 +153,27 @@ app.whenReady().then(() => {
 
   startPythonBackend();
   createWindow();
+  createTray();
+
+  globalShortcut.register('Alt+Space', () => {
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+      mainWindow.webContents.send('trigger-listening');
+    }
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
+    } else {
+      mainWindow?.show();
     }
   });
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });
 
 app.on('window-all-closed', () => {
@@ -135,6 +183,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  isQuitting = true;
   if (backendProcess) {
     backendProcess.kill();
   }

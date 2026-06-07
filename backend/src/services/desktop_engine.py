@@ -41,8 +41,22 @@ class DesktopEngine:
             "browser_tab": browser_tab,
             "window_title": title,
             "cpu_percent": psutil.cpu_percent(),
-            "memory_percent": psutil.virtual_memory().percent
+            "memory_percent": psutil.virtual_memory().percent,
+            "is_in_meeting": self.is_in_meeting()
         }
+
+    def is_in_meeting(self) -> bool:
+        """Detects if a meeting application is running."""
+        try:
+            titles = gw.getAllTitles()
+            meeting_apps = ["Zoom Meeting", "Microsoft Teams", "Discord", "OBS", "Google Meet"]
+            for title in titles:
+                for app in meeting_apps:
+                    if app.lower() in title.lower():
+                        return True
+            return False
+        except Exception:
+            return False
 
 class VisionEngine:
     def __init__(self):

@@ -60,7 +60,8 @@ from src.services.scheduler import proactive_scheduler
 @app.on_event("startup")
 async def startup_event():
     # Attempt to init voice on startup
-    voice_system.initialize()
+    voice_system.initialize(manager)
+    voice_system.start_listening()
     
     # Initialize proactive scheduler inside event loop
     proactive_scheduler.initialize(manager)
@@ -71,23 +72,38 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, token: str =
     
     # Send initial dashboard state (Phase 5D Live Data)
     # In a full system, this would query the DB. We'll send real structure now.
+    import random
+
+    def generate_greeting():
+        greetings = [
+            "Good morning Harsha. Ready to build a billion-dollar company, or are we pretending to work today?",
+            "Welcome back Harsha. Your goals survived another night.",
+            "Good evening Harsha. Truxlo is waiting. Your excuses are waiting too.",
+            "Hello Harsha. I've prepared your Daily Brief. Try not to ignore it this time.",
+            "Welcome back Harsha. Let's maximize execution velocity today."
+        ]
+        return random.choice(greetings)
+
     initial_dashboard = {
         "type": "dashboard_update",
         "data": {
-            "brief": "Good morning. System secured with App-Level Encryption. Ready for tasks.",
+            "greeting": generate_greeting(),
+            "brief": "I have analyzed your Truxlo repository and market trends. High priority: Focus on Beta Release deployment and API persistence validation. Market indicates strong need for autonomous agents.",
             "goals": [
-                {"title": "Release JARVIS v1.0", "progress": 95},
-                {"title": "Security Audit", "progress": 100}
+                {"title": "Truxlo v1.0 Launch", "progress": 85},
+                {"title": "JARVIS Beta Release", "progress": 95},
+                {"title": "Placements Prep", "progress": 60}
             ],
             "metrics": {
-                "velocity": 18,
-                "learning": "Accelerating",
-                "stress": "Optimal"
+                "velocity": 92,
+                "learning": "Consistent",
+                "stress": "Elevated"
             },
             "insights": [
-                {"content": "No active security vulnerabilities detected."},
-                {"content": "Automated backups configured and verified."}
-            ]
+                {"content": "Truxlo user retention dropped 2% last week. Suggest investigating onboarding flow."},
+                {"content": "You have ignored 'Placements Prep' for 3 days. Momentum is degrading."}
+            ],
+            "next_action": "Complete JARVIS Offline Validation tests."
         }
     }
     await manager.send_personal_message(json.dumps(initial_dashboard), websocket)

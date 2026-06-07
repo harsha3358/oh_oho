@@ -7,10 +7,10 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev:frontend": "vite --force",
-    "dev:electron": "tsc -p tsconfig.node.json && electron .",
+    "dev:electron": "tsc -p tsconfig.electron.json && electron .",
     "dev": "concurrently -k \"npm run dev:frontend\" \"wait-on http://localhost:5173 && npm run dev:electron\"",
     "build:frontend": "tsc -b && vite build",
-    "build:electron": "tsc -p tsconfig.node.json",
+    "build:electron": "tsc -p tsconfig.electron.json",
     "build:backend": "cd ../../backend && .\\venv\\Scripts\\activate && pyinstaller --onefile --distpath ../apps/desktop/resources/backend --name jarvis_backend src/main.py",
     "build": "npm run build:frontend && npm run build:electron && npm run build:backend && electron-builder --win",
     "lint": "eslint .",

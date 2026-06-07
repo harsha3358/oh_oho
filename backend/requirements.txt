@@ -1,0 +1,7 @@
+openwakeword
+sounddevice
+faster-whisper
+fastapi
+uvicorn
+sqlalchemy
+pydantic

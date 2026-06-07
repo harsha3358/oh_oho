@@ -4,20 +4,43 @@ import { Calendar, Target, Activity, Zap, TrendingUp, Info } from 'lucide-react'
 export default function Dashboard({ data }: { data: any }) {
   return (
     <div className="h-full w-full flex flex-col gap-6 p-6 overflow-y-auto overflow-x-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-light tracking-wide text-white">Chief of Staff</h2>
-        <div className="px-3 py-1 text-xs rounded-full bg-softGreen/20 text-softGreen border border-softGreen/30 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-softGreen animate-pulse"></span>
-          SYSTEM ONLINE
+      {/* Header with Greeting */}
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-light tracking-wide text-white">Chief of Staff</h2>
+          <div className="px-3 py-1 text-xs rounded-full bg-softGreen/20 text-softGreen border border-softGreen/30 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-softGreen animate-pulse"></span>
+            SYSTEM ONLINE
+          </div>
         </div>
+        <p className="text-lavender font-medium mt-2 italic">
+          {data?.greeting || "Initializing cognitive routines..."}
+        </p>
       </div>
+
+      {/* Next Action / Priority */}
+      {data?.next_action && (
+        <div className="glass-panel p-4 flex items-center justify-between border-lightBlue/30 bg-lightBlue/5">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-lightBlue/20 rounded-lg text-lightBlue">
+              <Zap size={20} />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-white/50 uppercase tracking-widest">Suggested Next Action</span>
+              <span className="text-white font-medium">{data.next_action}</span>
+            </div>
+          </div>
+          <button className="px-4 py-2 bg-lightBlue/20 hover:bg-lightBlue/30 text-lightBlue rounded-lg text-sm font-medium transition-colors border border-lightBlue/30">
+            Execute
+          </button>
+        </div>
+      )}
 
       {/* Morning Briefing Panel */}
       <div className="glass-panel p-5 flex flex-col gap-3">
         <div className="flex items-center gap-2 text-lightBlue border-b border-white/10 pb-2">
           <Calendar size={18} />
-          <span className="font-medium tracking-wider text-sm uppercase">Morning Brief</span>
+          <span className="font-medium tracking-wider text-sm uppercase">Founder Brief</span>
         </div>
         <p className="text-sm text-white/80 leading-relaxed">
           {data?.brief || "Awaiting synchronization..."}
