@@ -39,7 +39,7 @@ export default function Onboarding() {
 
   return (
     <div className="flex flex-col items-center justify-center h-full p-8">
-      <h1 className="text-4xl font-bold mb-4 text-[var(--color-jarvis-accent)]">JARVIS Initializing</h1>
+      <h1 className="text-4xl font-bold mb-4 text-[var(--color-jarvis-accent)]">Harsha's Assistant Initializing</h1>
       
       <div className="w-full max-w-lg bg-[var(--color-jarvis-panel)] rounded-xl p-6 shadow-2xl border border-gray-800">
         {step === 0 && (
@@ -53,7 +53,7 @@ export default function Onboarding() {
         {step === 1 && (
           <div>
             <h2 className="text-xl font-semibold mb-4">Model Manager</h2>
-            <p className="text-sm text-gray-400 mb-6">JARVIS requires local AI models to run privately. We will download Qwen 2.5, Gemma, and Embedding models now.</p>
+            <p className="text-sm text-gray-400 mb-6">Harsha's Assistant requires local AI models to run privately. We will download Qwen 2.5, Gemma, and Embedding models now.</p>
             
             <div className="space-y-4">
               <div className="flex justify-between items-center">

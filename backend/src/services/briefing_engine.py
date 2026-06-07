@@ -18,7 +18,7 @@ class BriefingEngine:
             m = goal_engine.calculate_momentum(g)
             goal_context += f"- {g.title}: Progress {m['progress']}, Momentum: {m['momentum_score']}% ({m['status']})\n"
             
-        sys_msg = SystemMessage(content="""You are JARVIS, acting as Chief of Staff. 
+        sys_msg = SystemMessage(content="""You are Harsha's Assistant, acting as Chief of Staff. 
 Generate the Daily Executive Brief. Include:
 1. Top Priorities (based on the active goals provided).
 2. Potential Risks (Identify goals with At Risk momentum).
@@ -37,7 +37,7 @@ Keep it strictly professional, concise, and highly actionable.""")
         mem_ctx = "Recent Insights:\n" + "\n".join([m['content'] for m in recent_memories])
         goal_context = "Goals Status:\n" + "\n".join([f"- {g.title}: {g.progress*100}%" for g in active_goals])
         
-        sys_msg = SystemMessage(content="""You are JARVIS. Generate a Weekly Strategy Review.
+        sys_msg = SystemMessage(content="""You are Harsha's Assistant. Generate a Weekly Strategy Review.
 This is a strategic review, not a productivity review.
 Extract patterns from the provided insights and goals.
 Format:

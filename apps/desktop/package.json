@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "JARVIS Personal Operating System",
+  "description": "Harsha's Assistant Personal Operating System",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev:frontend": "vite --force",
@@ -51,7 +51,7 @@
   },
   "build": {
     "appId": "com.harsha.jarvis",
-    "productName": "JARVIS",
+    "productName": "Harsha's Assistant",
     "directories": {
       "output": "release"
     },

@@ -25,7 +25,7 @@ export default function ChatInterface() {
         setStreaming(true);
         appendStreamingContent(data.text);
         // Simple mock for end of stream: if it contains a period (very naive just for testing Phase 1A)
-        if (data.text.includes('JARVIS received')) {
+        if (data.text.includes('Harsha's Assistant received')) {
              setTimeout(() => commitStreamingContent(), 500);
         }
       }
@@ -57,7 +57,7 @@ export default function ChatInterface() {
       <div className="flex items-center justify-between p-4 border-b border-gray-800">
         <div className="flex items-center gap-3">
           <div className={`w-3 h-3 rounded-full ${isBackendConnected ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.6)]' : 'bg-red-500'}`} />
-          <span className="font-semibold tracking-widest text-sm text-gray-300">SYSTEM.JARVIS</span>
+          <span className="font-semibold tracking-widest text-sm text-gray-300">SYSTEM.Harsha's Assistant</span>
         </div>
         <div className="text-xs text-gray-500 uppercase tracking-widest">
           State: <span className="text-[var(--color-jarvis-accent)]">{jarvisState}</span>
@@ -91,7 +91,7 @@ export default function ChatInterface() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Talk to JARVIS..."
+            placeholder="Talk to Harsha's Assistant..."
             className="flex-1 bg-black/30 border border-gray-700 rounded-lg px-4 py-3 text-gray-200 focus:outline-none focus:border-[var(--color-jarvis-accent)] transition-colors"
           />
           <button 

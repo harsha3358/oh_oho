@@ -21,7 +21,7 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
     e.preventDefault();
     
     // Construct email body
-    const subject = `[JARVIS Beta] ${type.toUpperCase()}: from ${name || 'User'}`;
+    const subject = `[Harsha's Assistant Beta] ${type.toUpperCase()}: from ${name || 'User'}`;
     let body = `Name: ${name}\nEmail: ${email}\nType: ${type}\n\nDescription:\n${description}\n\n`;
     
     if (attachLogs) {
@@ -35,7 +35,7 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
   };
 
   const handleWhatsApp = () => {
-    const text = `Hi, I need urgent assistance with JARVIS Beta.`;
+    const text = `Hi, I need urgent assistance with Harsha's Assistant Beta.`;
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`, '_blank');
   };
 

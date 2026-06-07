@@ -63,7 +63,7 @@ export default function WelcomeWizard({ onComplete }: { onComplete: () => void }
               <motion.div key="step1" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }} className="flex flex-col h-full items-center justify-center text-center gap-6">
                 <BrainCircuit size={64} className="text-lightBlue drop-shadow-[0_0_20px_rgba(96,165,250,0.5)]" />
                 <div>
-                  <h1 className="text-4xl font-light tracking-wide mb-3">Welcome to JARVIS</h1>
+                  <h1 className="text-4xl font-light tracking-wide mb-3">Welcome to Harsha's Assistant</h1>
                   <p className="text-white/60 text-lg">Your Personal Operating System. Let's get you set up securely.</p>
                 </div>
               </motion.div>
@@ -73,7 +73,7 @@ export default function WelcomeWizard({ onComplete }: { onComplete: () => void }
               <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex flex-col h-full gap-6">
                 <div>
                   <h2 className="text-2xl font-light">Select AI Engine</h2>
-                  <p className="text-white/50 mt-2">Choose how JARVIS powers its reasoning.</p>
+                  <p className="text-white/50 mt-2">Choose how Harsha's Assistant powers its reasoning.</p>
                 </div>
                 
                 <div className="grid gap-4 mt-4">
@@ -120,7 +120,7 @@ export default function WelcomeWizard({ onComplete }: { onComplete: () => void }
                       <input type="checkbox" checked={optInTelemetry} onChange={(e) => setOptInTelemetry(e.target.checked)} className="mt-1 w-4 h-4 rounded border-white/20 bg-black/40 text-lightBlue focus:ring-lightBlue/50" />
                       <div className="flex flex-col">
                         <span className="text-sm font-medium text-white/90">Share Anonymous Usage Data</span>
-                        <span className="text-xs text-white/50 mt-1">Help us improve JARVIS Beta by sharing anonymous crash reports and feature usage. We never collect personal data, memories, or API keys.</span>
+                        <span className="text-xs text-white/50 mt-1">Help us improve Harsha's Assistant Beta by sharing anonymous crash reports and feature usage. We never collect personal data, memories, or API keys.</span>
                       </div>
                     </label>
                   </div>
@@ -154,7 +154,7 @@ export default function WelcomeWizard({ onComplete }: { onComplete: () => void }
               <motion.div key="step5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex flex-col h-full items-center justify-center text-center gap-6">
                 <Shield size={64} className="text-softGreen" />
                 <div>
-                  <h2 className="text-3xl font-light mb-3">JARVIS is Ready</h2>
+                  <h2 className="text-3xl font-light mb-3">Harsha's Assistant is Ready</h2>
                   <p className="text-white/60">Your Personal OS is securely configured and encrypted.</p>
                 </div>
                 
@@ -181,7 +181,7 @@ export default function WelcomeWizard({ onComplete }: { onComplete: () => void }
               disabled={saving}
               className="bg-primary text-dark px-6 py-2.5 rounded-full font-medium flex items-center gap-2 hover:scale-105 transition-transform disabled:opacity-50"
             >
-              {saving ? 'Saving...' : step === 5 ? 'Launch JARVIS' : 'Continue'} 
+              {saving ? 'Saving...' : step === 5 ? 'Launch Harsha's Assistant' : 'Continue'} 
               {!saving && step !== 5 && <ArrowRight size={16} />}
             </button>
           </div>

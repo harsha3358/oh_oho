@@ -12,7 +12,7 @@ if os.environ.get("GEMINI_API_KEY"):
 else:
     llm = ChatOpenAI(model="qwen2.5:7b", base_url="http://localhost:11434/v1", api_key="ollama")
 
-EXECUTIVE_PROMPT = """You are the Executive Routing Agent for JARVIS.
+EXECUTIVE_PROMPT = """You are the Executive Routing Agent for Harsha's Assistant.
 Your job is to analyze the user's input, inject desktop context if requested, retrieve relevant memory, and decide which specialized agent should handle the response.
 
 Available Agents:

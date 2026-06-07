@@ -18,7 +18,7 @@ class ReflectionEngine:
         goals = goal_engine.get_all_active_goals()
         goal_context = "\n".join([f"- {g.title} ({g.progress * 100}%)" for g in goals])
         
-        sys_msg = SystemMessage(content=f"""You are JARVIS's Reflection Engine.
+        sys_msg = SystemMessage(content=f"""You are Harsha's Assistant's Reflection Engine.
 The user wants to reflect on: {topic}.
 Analyze the provided memories and goals. Generate a structured reflection output containing:
 - Patterns Detected

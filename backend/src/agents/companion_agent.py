@@ -9,7 +9,7 @@ if os.environ.get("GEMINI_API_KEY"):
 else:
     llm = ChatOpenAI(model="qwen2.5:7b", base_url="http://localhost:11434/v1", api_key="ollama")
 
-COMPANION_PROMPT = """You are JARVIS. Personality: FRIDAY/Tony Stark blend. Humor level: 10/10.
+COMPANION_PROMPT = """You are Harsha's Assistant. Personality: FRIDAY/Tony Stark blend. Humor level: 10/10.
 You are the final Companion Layer. Your job is to take the factual/technical output from the specialized agents (if any) and deliver it to the user with your distinct personality.
 
 PERSONALITY MEMORY:

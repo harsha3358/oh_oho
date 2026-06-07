@@ -80,7 +80,7 @@ class VoiceSystem:
         self.process_thread = threading.Thread(target=self._process_audio)
         self.process_thread.daemon = True
         self.process_thread.start()
-        print("JARVIS is now listening for 'Oye'...")
+        print("Harsha's Assistant is now listening for 'Oye'...")
 
     def _process_audio(self):
         while self.is_listening:

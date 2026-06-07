@@ -186,7 +186,7 @@ function App() {
           <Target size={48} className="text-lavender mb-6" />
           <h2 className="text-3xl font-light tracking-wide mb-2">Focus Session</h2>
           <div className="text-5xl font-mono text-lightBlue my-8 tracking-wider shadow-lg">25:00</div>
-          <p className="text-white/60">Current Priority: Execute JARVIS Beta Validation</p>
+          <p className="text-white/60">Current Priority: Execute Harsha's Assistant Beta Validation</p>
           <div className="w-full h-1 bg-white/10 rounded-full mt-8 overflow-hidden">
             <div className="h-full bg-lavender w-1/4 shadow-[0_0_15px_rgba(196,181,253,0.8)]"></div>
           </div>
@@ -244,7 +244,7 @@ function App() {
               <h3 className="font-medium mb-4 text-lightBlue">Startup & Behavior</h3>
               <label className="flex items-center gap-3 cursor-pointer">
                 <input type="checkbox" defaultChecked className="w-4 h-4 rounded border-white/20 bg-black/40 text-lightBlue focus:ring-lightBlue/50 focus:ring-offset-dark" />
-                <span className="text-sm">Launch JARVIS on Startup</span>
+                <span className="text-sm">Launch Harsha's Assistant on Startup</span>
               </label>
               <label className="flex items-center gap-3 cursor-pointer mt-3">
                 <input type="checkbox" defaultChecked className="w-4 h-4 rounded border-white/20 bg-black/40 text-lightBlue focus:ring-lightBlue/50 focus:ring-offset-dark" />
@@ -255,7 +255,7 @@ function App() {
             <div className="glass-panel p-5 border-lavender/30">
               <h3 className="font-medium mb-4 text-lavender">Data & Privacy</h3>
               <p className="text-xs text-white/50 mb-4 leading-relaxed">
-                You own your data. JARVIS runs locally and stores all your memories, goals, and reflections on your machine.
+                You own your data. Harsha's Assistant runs locally and stores all your memories, goals, and reflections on your machine.
               </p>
               <button onClick={() => alert("Packaging ZIP...")} className="w-full py-3 bg-lavender/20 text-lavender hover:bg-lavender/30 rounded-lg border border-lavender/30 transition-colors text-sm font-medium">
                 One-Click Export (ZIP)
@@ -291,7 +291,7 @@ function App() {
       <aside className="w-72 h-full border-r border-white/5 bg-black/20 backdrop-blur-md p-4 flex flex-col gap-6 flex-shrink-0 z-20">
         <div className="flex items-center gap-3 px-2 py-4 border-b border-white/10">
           <BrainCircuit className="text-lightBlue" />
-          <h1 className="text-xl font-light tracking-[0.2em] text-glow">JARVIS</h1>
+          <h1 className="text-xl font-light tracking-[0.2em] text-glow">Harsha's Assistant</h1>
         </div>
         
         <nav className="flex flex-col gap-2">
@@ -328,7 +328,7 @@ function App() {
               type="text" 
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder={isListening ? "Listening..." : "Command JARVIS..."}
+              placeholder={isListening ? "Listening..." : "Command Harsha's Assistant..."}
               className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 pl-14 pr-6 text-white placeholder-white/30 focus:outline-none focus:border-lightBlue/50 focus:ring-1 focus:ring-lightBlue/50 backdrop-blur-md transition-all shadow-xl"
             />
           </form>

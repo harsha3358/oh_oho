@@ -50,7 +50,7 @@ class AutomationEngine:
     def execute_action(self, action_payload: dict) -> str:
         """Executes the action if approved and allowed."""
         if self.safe_mode_enabled:
-            return "Automation blocked: JARVIS is in Safe Mode."
+            return "Automation blocked: Harsha's Assistant is in Safe Mode."
             
         if action_payload.get("status") != "approved":
             return f"Action blocked: {action_payload.get('reason', 'Requires user confirmation.')}"

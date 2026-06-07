@@ -18,7 +18,7 @@ sentry_sdk.init(
 # Create all database tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="JARVIS AI Personal OS", version="1.0.0")
+app = FastAPI(title="Harsha's Assistant AI Personal OS", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -91,7 +91,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, token: str =
             "brief": "I have analyzed your Truxlo repository and market trends. High priority: Focus on Beta Release deployment and API persistence validation. Market indicates strong need for autonomous agents.",
             "goals": [
                 {"title": "Truxlo v1.0 Launch", "progress": 85},
-                {"title": "JARVIS Beta Release", "progress": 95},
+                {"title": "Harsha's Assistant Beta Release", "progress": 95},
                 {"title": "Placements Prep", "progress": 60}
             ],
             "metrics": {
@@ -103,7 +103,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, token: str =
                 {"content": "Truxlo user retention dropped 2% last week. Suggest investigating onboarding flow."},
                 {"content": "You have ignored 'Placements Prep' for 3 days. Momentum is degrading."}
             ],
-            "next_action": "Complete JARVIS Offline Validation tests."
+            "next_action": "Complete Harsha's Assistant Offline Validation tests."
         }
     }
     await manager.send_personal_message(json.dumps(initial_dashboard), websocket)
