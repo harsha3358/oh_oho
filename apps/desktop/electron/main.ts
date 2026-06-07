@@ -100,16 +100,16 @@ function createTray() {
   tray = new Tray(iconPath);
   
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'Open Harsha's Assistant', click: () => mainWindow?.show() },
+    { label: "Open Harsha's Assistant", click: () => mainWindow?.show() },
     { label: 'Founder Briefing', click: () => { mainWindow?.show(); mainWindow?.webContents.send('navigate', 'founder'); } },
     { label: 'Daily Brief', click: () => { mainWindow?.show(); mainWindow?.webContents.send('navigate', 'dashboard'); } },
     { label: 'Settings', click: () => { mainWindow?.show(); mainWindow?.webContents.send('navigate', 'settings'); } },
     { label: 'Diagnostics', click: () => { mainWindow?.show(); mainWindow?.webContents.send('navigate', 'diagnostics'); } },
     { type: 'separator' },
-    { label: 'Exit Harsha's Assistant', click: () => { isQuitting = true; app.quit(); } }
+    { label: "Exit Harsha's Assistant", click: () => { isQuitting = true; app.quit(); } }
   ]);
 
-  tray.setToolTip('Harsha's Assistant AI Personal OS');
+  tray.setToolTip("Harsha's Assistant AI Personal OS");
   tray.setContextMenu(contextMenu);
   tray.on('click', () => mainWindow?.show());
 }

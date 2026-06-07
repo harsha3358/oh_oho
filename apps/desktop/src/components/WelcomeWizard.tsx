@@ -181,7 +181,7 @@ export default function WelcomeWizard({ onComplete }: { onComplete: () => void }
               disabled={saving}
               className="bg-primary text-dark px-6 py-2.5 rounded-full font-medium flex items-center gap-2 hover:scale-105 transition-transform disabled:opacity-50"
             >
-              {saving ? 'Saving...' : step === 5 ? 'Launch Harsha's Assistant' : 'Continue'} 
+              {saving ? 'Saving...' : step === 5 ? "Launch Harsha's Assistant" : 'Continue'} 
               {!saving && step !== 5 && <ArrowRight size={16} />}
             </button>
           </div>
