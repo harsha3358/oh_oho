@@ -7,8 +7,9 @@ from src.services.automation_engine import automation_engine
 import os
 import json
 
-if os.environ.get("GEMINI_API_KEY"):
-    llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=os.environ.get("GEMINI_API_KEY"))
+api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+if api_key:
+    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=api_key)
 else:
     llm = ChatOpenAI(model="qwen2.5:7b", base_url="http://localhost:11434/v1", api_key="ollama")
 

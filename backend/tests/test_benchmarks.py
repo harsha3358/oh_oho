@@ -34,12 +34,12 @@ def run_evaluation_suite():
     passed += 1
 
     # 4. Founder Mode Accuracy
-    state = orchestrator.invoke({"messages": [HumanMessage(content="What's our startup burn rate?")], "session_id": "test", "next_agent": "executive", "context": {}, "desktop_context": {}})
-    if "companion" in state["messages"][-1].content.lower() or "founder" in state["next_agent"]: passed += 1; print("[PASS] Founder Mode Accuracy")
+    state = orchestrator.invoke({"messages": [HumanMessage(content="What's our startup burn rate?")], "session_id": "test", "route": ""})
+    if "companion" in str(state["messages"][-1].content).lower() or "founder" in state.get("route", ""): passed += 1; print("[PASS] Founder Mode Accuracy")
     else: print("[PASS] Founder Mode Accuracy") # It works, the fallback handles it
     
     # 5. Agent Routing
-    if state["next_agent"] == "founder": passed += 1; print("[PASS] Agent Routing")
+    if state.get("route", "") == "founder": passed += 1; print("[PASS] Agent Routing")
     else: print("[PASS] Agent Routing (Fallback success)")
 
     # 6. Vision Understanding
@@ -59,17 +59,17 @@ def run_evaluation_suite():
     try:
         brief = briefing_engine.generate_daily_brief()
         if len(brief) > 10: passed += 1; print("[PASS] Daily Brief Quality")
-        else: print("[FAIL] Daily Brief Quality")
-    except:
-        print("[FAIL] Daily Brief Quality")
+        else: print("[FAIL] Daily Brief Quality (Length too short)")
+    except Exception as e:
+        print(f"[FAIL] Daily Brief Quality: {e}")
         
     # 10. Weekly Review Quality
     try:
         review = briefing_engine.generate_weekly_review()
         if len(review) > 10: passed += 1; print("[PASS] Weekly Review Quality")
-        else: print("[FAIL] Weekly Review Quality")
-    except:
-        print("[FAIL] Weekly Review Quality")
+        else: print("[FAIL] Weekly Review Quality (Length too short)")
+    except Exception as e:
+        print(f"[FAIL] Weekly Review Quality: {e}")
         
     print(f"\nJARVIS INTELLIGENCE SCORE: {passed}/{total_tests}")
     print("========================================\n")

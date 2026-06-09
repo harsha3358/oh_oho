@@ -56,8 +56,8 @@ def open_camera() -> str:
     return "Camera application opened."
 
 # Initialize the LLM
-api_key = os.environ.get("GEMINI_API_KEY", "")
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", google_api_key=api_key or "DUMMY_KEY")
+api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=api_key or "DUMMY_KEY")
 
 system_prompt = """You are JARVIS, Harsha's autonomous Founder OS Agent.
 You execute complex tasks using available tools.

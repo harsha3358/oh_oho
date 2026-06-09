@@ -212,8 +212,13 @@ class VoiceSystem:
 
     async def _invoke_orchestrator(self, text):
         try:
-            response = orchestrator.invoke({"messages": [{"role": "user", "content": text}]})
-            ai_msg = response["messages"][-1]["content"]
+            from langchain_core.messages import HumanMessage
+            response = orchestrator.invoke({
+                "messages": [HumanMessage(content=text)],
+                "session_id": "voice_session",
+                "route": "simple"
+            })
+            ai_msg = response["messages"][-1].content
             print(f"JARVIS: {ai_msg}")
             await self._speak_response(ai_msg)
         except Exception as e:

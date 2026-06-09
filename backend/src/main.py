@@ -160,6 +160,8 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, token: str =
                     
                 except Exception as e:
                     import traceback
+                    with open("debug_error.log", "w") as f:
+                        traceback.print_exc(file=f)
                     traceback.print_exc()
                     
                     # Offline Mode Fallback

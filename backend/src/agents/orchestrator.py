@@ -7,8 +7,8 @@ from src.agents.agent_mode import execute_agent_mode
 from src.database import SessionLocal
 from src.models.core import Memory
 
-api_key = os.environ.get("GEMINI_API_KEY", "")
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", google_api_key=api_key or "DUMMY_KEY")
+api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=api_key or "DUMMY_KEY")
 fast_llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=api_key or "DUMMY_KEY") # Use flash for <500ms routing
 
 # Define State
